@@ -1,12 +1,14 @@
 import tkinter as tk
 from tkinter import ttk
+from tkinter import messagebox
 import sqlite3
 from datetime import datetime, timedelta
+import os
 
 class TimeTrackerApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("TimeCrystal V0.0.1")
+        self.root.title("Suivi de Temps")
 
         self.task_name_var = tk.StringVar()
 
@@ -26,6 +28,8 @@ class TimeTrackerApp:
         self.conn.commit()
 
     def setup_ui(self):
+        self.setup_menu()
+
         frame = ttk.Frame(self.root, padding="10")
         frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
@@ -40,14 +44,32 @@ class TimeTrackerApp:
         self.elapsed_time_label.grid(column=1, row=3, columnspan=4, sticky=tk.W)
         self.elapsed_time_label.grid_remove()
 
-        self.tasks_tree = ttk.Treeview(frame, columns=("task", "start_time", "end_time", "total_time"), show='headings')
+        self.tasks_tree = ttk.Treeview(frame, columns=("id", "task", "start_time", "end_time", "total_time"), show='headings')
+        self.tasks_tree.heading("id", text="ID")
         self.tasks_tree.heading("task", text="Tâche")
         self.tasks_tree.heading("start_time", text="Heure de Début")
         self.tasks_tree.heading("end_time", text="Heure de Fin")
         self.tasks_tree.heading("total_time", text="Temps Total (s)")
         self.tasks_tree.grid(column=1, row=4, columnspan=4, sticky=(tk.W, tk.E))
 
+        self.tasks_tree.column("id", width=30)  # Hide the ID column by making it small
+
+        self.tasks_tree.bind("<Button-3>", self.show_context_menu)
+
+        self.context_menu = tk.Menu(self.root, tearoff=0)
+        self.context_menu.add_command(label="Supprimer la Tâche", command=self.delete_task)
+
         self.load_tasks()
+
+    def setup_menu(self):
+        menubar = tk.Menu(self.root)
+        self.root.config(menu=menubar)
+
+        file_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Fichier", menu=file_menu)
+        file_menu.add_command(label="Supprimer la base de données", command=self.delete_database)
+        file_menu.add_separator()
+        file_menu.add_command(label="Quitter", command=self.root.quit)
 
     def start_task(self):
         if not self.task_running:
@@ -104,10 +126,40 @@ class TimeTrackerApp:
         for row in self.tasks_tree.get_children():
             self.tasks_tree.delete(row)
 
-        self.cursor.execute("SELECT task_name, start_time, end_time, total_time FROM tasks")
+        self.cursor.execute("SELECT id, task_name, start_time, end_time, total_time FROM tasks")
         for row in self.cursor.fetchall():
-            row = (row[0], row[1], row[2], int(row[3]))
+            row = (row[0], row[1], row[2], row[3], int(row[4]))
             self.tasks_tree.insert("", "end", values=row)
+
+    def show_context_menu(self, event):
+        selected_item = self.tasks_tree.identify_row(event.y)
+        if selected_item:
+            self.tasks_tree.selection_set(selected_item)
+            self.context_menu.post(event.x_root, event.y_root)
+
+    def delete_task(self):
+        selected_item = self.tasks_tree.selection()[0]
+        task_values = self.tasks_tree.item(selected_item, "values")
+        task_id = task_values[0]
+
+        print(f"Suppression de la tâche avec ID: {task_id}")  # Debugging information
+
+        self.cursor.execute("DELETE FROM tasks WHERE id=?", (task_id,))
+        self.conn.commit()
+        self.load_tasks()
+
+    def delete_database(self):
+        confirm = messagebox.askyesno("Confirmation", "Voulez-vous vraiment supprimer la base de données ?")
+        if confirm:
+            self.conn.close()
+            if os.path.exists('tasks.db'):
+                os.remove('tasks.db')
+                print("Fichier tasks.db supprimé.")
+            else:
+                print("Le fichier tasks.db n'existe pas.")
+            self.setup_db()
+            self.load_tasks()
+            messagebox.showinfo("Info", "La base de données a été supprimée.")
 
 if __name__ == "__main__":
     root = tk.Tk()
