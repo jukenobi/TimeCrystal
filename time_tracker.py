@@ -8,8 +8,7 @@ import os
 class TimeTrackerApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Suivi de Temps")
-
+        self.root.title("TimeCrystal V1.0")
         self.task_name_var = tk.StringVar()
 
         self.setup_db()
@@ -19,6 +18,7 @@ class TimeTrackerApp:
         self.task_start_time = None
         self.pause_start_time = None
         self.elapsed_time = timedelta()
+
 
     def setup_db(self):
         self.conn = sqlite3.connect('tasks.db')
@@ -32,6 +32,7 @@ class TimeTrackerApp:
 
         frame = ttk.Frame(self.root, padding="10")
         frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
 
         ttk.Label(frame, text="Nom de la Tâche :").grid(column=1, row=1, sticky=tk.W)
         ttk.Entry(frame, width=25, textvariable=self.task_name_var).grid(column=2, row=1, sticky=(tk.W, tk.E))
@@ -70,6 +71,7 @@ class TimeTrackerApp:
         file_menu.add_command(label="Supprimer la base de données", command=self.delete_database)
         file_menu.add_separator()
         file_menu.add_command(label="Quitter", command=self.root.quit)
+
 
     def start_task(self):
         if not self.task_running:
@@ -160,6 +162,7 @@ class TimeTrackerApp:
             self.setup_db()
             self.load_tasks()
             messagebox.showinfo("Info", "La base de données a été supprimée.")
+                
 
 if __name__ == "__main__":
     root = tk.Tk()
